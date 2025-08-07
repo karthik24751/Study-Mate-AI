@@ -18,12 +18,15 @@ CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS for all routes
 
 # Configure Google Cloud Storage
 GCS_BUCKET = 'study-mate-ai-sr-2024'
-GCS_CREDENTIALS = 'service-account.json'
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = GCS_CREDENTIALS
 
-# Initialize GCS client
-gcs_client = storage.Client()
-bucket = gcs_client.bucket(GCS_BUCKET)
+# Initialize GCS client with default credentials (works in Google Cloud Run)
+try:
+    gcs_client = storage.Client()
+    bucket = gcs_client.bucket(GCS_BUCKET)
+except Exception as e:
+    print(f"Warning: Could not initialize GCS client: {e}")
+    gcs_client = None
+    bucket = None
 
 # Initialize NLP models
 try:
@@ -184,13 +187,26 @@ def upload_pdf():
         '.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.xls', '.xlsx')):
         try:
             file_bytes = file.read()
-            blob = bucket.blob(file.filename)
-            # Determine content type
+            
+            # Upload to GCS if available
+            if bucket:
+                blob = bucket.blob(file.filename)
+                # Determine content type
+                if file.filename.lower().endswith('.pdf'):
+                    blob.upload_from_string(file_bytes, content_type='application/pdf')
+                elif file.filename.lower().endswith(('.doc', '.docx')):
+                    blob.upload_from_string(file_bytes, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                elif file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                    blob.upload_from_string(file_bytes, content_type='image/jpeg')
+                elif file.filename.lower().endswith(('.xls', '.xlsx')):
+                    blob.upload_from_string(file_bytes, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                else:
+                    blob.upload_from_string(file_bytes)
+            
+            # Extract text based on file type
             if file.filename.lower().endswith('.pdf'):
-                blob.upload_from_string(file_bytes, content_type='application/pdf')
                 text = extract_text_from_pdf(file_bytes)
             elif file.filename.lower().endswith(('.doc', '.docx')):
-                blob.upload_from_string(file_bytes, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
                 # Try to extract text from doc/docx
                 try:
                     import docx
@@ -200,13 +216,10 @@ def upload_pdf():
                 except Exception:
                     text = 'Text extraction from DOC/DOCX failed.'
             elif file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-                blob.upload_from_string(file_bytes, content_type='image/jpeg')
                 text = 'Text extraction from images is not yet supported.'
             elif file.filename.lower().endswith(('.xls', '.xlsx')):
-                blob.upload_from_string(file_bytes, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 text = 'Text extraction from Excel files is not yet supported.'
             else:
-                blob.upload_from_string(file_bytes)
                 text = 'Unsupported file type.'
             
             # Generate user ID
