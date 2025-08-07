@@ -19,4 +19,3 @@ services:
     envVars:
       - key: REACT_APP_API_URL
         value: https://study-mate-backend.onrender.com
-    plan: free
