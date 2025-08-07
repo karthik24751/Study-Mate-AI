@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: study-mate-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && python app.py
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: FLASK_ENV
+        value: production
+    plan: free
+
+  - type: web
+    name: study-mate-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://study-mate-backend.onrender.com
+    plan: free

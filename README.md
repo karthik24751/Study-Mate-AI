@@ -1,215 +1,224 @@
-# Study Mate AI - AI-Powered Interactive Learning Platform
+# Study Mate AI
 
-An innovative, AI-powered learning platform that allows students to upload PDFs and receive personalized, interactive learning experiences based on cutting-edge AI technologies.
+An AI-powered study companion that helps you learn more effectively by uploading documents, generating study plans, answering questions, and creating interactive quizzes.
 
-## 🚀 Features
+## Features
 
-### Core Features
-- **PDF Upload & Processing**: Upload PDF documents and extract text for analysis
-- **AI-Generated Study Plans**: Automatically analyze uploaded PDFs and generate personalized study plans
-- **Interactive Q&A System**: Ask questions about your uploaded content and get AI-powered answers
-- **Concept Map Generation**: Visualize key concepts and relationships from your documents
-- **Progress Tracking**: Track your learning progress with interactive checkboxes
-- **Quiz Generation**: Automatic quiz questions for each study section
+- 📄 **Document Upload**: Support for PDF, DOC, DOCX, images, and Excel files
+- 🧠 **AI-Powered Q&A**: Ask questions about your uploaded content
+- 📋 **Study Plans**: Generate personalized study plans with key concepts
+- 🗺️ **Concept Maps**: Visualize relationships between concepts
+- 📝 **Interactive Quizzes**: Test your knowledge with auto-generated questions
+- 👤 **User Authentication**: Register, login, and track your progress
+- 🔐 **Google OAuth**: Secure login with Google accounts
 
-### Technical Features
-- **Google Cloud Storage Integration**: Secure file storage in the cloud
-- **NLP Processing**: Advanced text analysis using spaCy and Transformers
-- **Responsive Web Interface**: Modern, beautiful UI that works on all devices
-- **Real-time Processing**: Instant feedback and results
-
-## 🛠️ Technology Stack
+## Tech Stack
 
 ### Backend
 - **Python Flask**: RESTful API server
-- **Google Cloud Storage**: File storage and management
-- **spaCy**: Natural Language Processing
-- **Transformers (HuggingFace)**: Question-Answering AI model
+- **Google Cloud Storage**: File storage
+- **spaCy**: Natural language processing
+- **Transformers**: Question-answering models
 - **PyMuPDF**: PDF text extraction
 
 ### Frontend
-- **React**: Modern web application framework
-- **CSS3**: Beautiful, responsive styling
-- **JavaScript ES6+**: Modern JavaScript features
+- **React**: Modern UI framework
+- **Material-UI**: Beautiful component library
+- **Google OAuth**: Authentication
+- **Responsive Design**: Works on all devices
 
-## 📋 Prerequisites
+## Deployment on Render
 
-Before running this project, make sure you have:
+This project is configured for easy deployment on Render with both backend and frontend services.
 
-1. **Python 3.8+** installed
-2. **Node.js 14+** and npm installed
-3. **Google Cloud Platform** account with:
-   - Google Cloud Storage bucket created
-   - Service account with Storage Admin permissions
-   - Service account key downloaded
+### Prerequisites
 
-## 🚀 Quick Start
+1. **GitHub Account**: Your code should be pushed to GitHub
+2. **Render Account**: Sign up at [render.com](https://render.com)
+3. **Google Cloud Account**: For file storage (optional, can be configured later)
 
-### 1. Clone and Setup
+### Step-by-Step Deployment
 
+#### 1. Prepare Your Repository
+
+Make sure your code is pushed to GitHub with the following structure:
+```
+Study Mate-AI/
+├── backend/
+│   ├── app.py
+│   └── requirements.txt
+├── frontend/
+│   ├── package.json
+│   └── src/
+├── render.yaml
+└── README.md
+```
+
+#### 2. Deploy Backend (Flask API)
+
+1. Go to [Render Dashboard](https://dashboard.render.com/)
+2. Click **"New +"** → **"Web Service"**
+3. Connect your GitHub repository
+4. Configure the service:
+   - **Name**: `study-mate-backend`
+   - **Root Directory**: `backend`
+   - **Environment**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python app.py`
+5. Click **"Create Web Service"**
+
+#### 3. Deploy Frontend (React App)
+
+1. In Render Dashboard, click **"New +"** → **"Static Site"**
+2. Connect the same GitHub repository
+3. Configure the service:
+   - **Name**: `study-mate-frontend`
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `build`
+4. Add Environment Variable:
+   - **Key**: `REACT_APP_API_URL`
+   - **Value**: `https://your-backend-service-name.onrender.com`
+5. Click **"Create Static Site"**
+
+#### 4. Configure Environment Variables
+
+For the backend service, add these environment variables in Render:
+
+- `PORT`: `10000` (Render sets this automatically)
+- `FLASK_ENV`: `production`
+- `GOOGLE_APPLICATION_CREDENTIALS`: Path to your service account file (if using Google Cloud)
+
+#### 5. Update Frontend API URL
+
+After your backend is deployed, update the frontend environment variable:
+1. Go to your frontend service in Render
+2. Navigate to **Environment** tab
+3. Update `REACT_APP_API_URL` with your actual backend URL
+
+### Alternative: Using render.yaml (Recommended)
+
+The project includes a `render.yaml` file for automatic deployment:
+
+1. In Render Dashboard, click **"New +"** → **"Blueprint"**
+2. Connect your GitHub repository
+3. Render will automatically detect and deploy both services
+4. Update the frontend environment variable with your backend URL
+
+### Environment Variables Setup
+
+#### Backend Environment Variables
 ```bash
-# Navigate to project directory
-cd "Study Mate-AI"
+PORT=10000
+FLASK_ENV=production
+GOOGLE_APPLICATION_CREDENTIALS=service-account.json
+```
 
-# Activate Python virtual environment
-source backend-venv/bin/activate
+#### Frontend Environment Variables
+```bash
+REACT_APP_API_URL=https://your-backend-service-name.onrender.com
+```
 
-# Install backend dependencies
+### Google Cloud Setup (Optional)
+
+If you want to use Google Cloud Storage for file uploads:
+
+1. Create a Google Cloud project
+2. Enable Cloud Storage API
+3. Create a service account and download the JSON key
+4. Add the JSON file to your backend directory
+5. Set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+
+### Local Development
+
+#### Backend Setup
+```bash
 cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# Install frontend dependencies
-cd ../frontend
-npm install
+python app.py
 ```
 
-### 2. Configure Google Cloud Storage
-
-1. Update `backend/app.py` with your Google Cloud Storage details:
-   ```python
-   GCS_BUCKET = 'your-bucket-name'
-   GCS_CREDENTIALS = 'backend/service-account.json'
-   ```
-
-2. Place your service account JSON key in `backend/service-account.json`
-
-### 3. Start the Application
-
-#### Start Backend Server
-```bash
-cd backend
-source ../backend-venv/bin/activate
-flask run
-```
-The backend will be available at: http://localhost:5000
-
-#### Start Frontend Development Server
+#### Frontend Setup
 ```bash
 cd frontend
+npm install
 npm start
 ```
-The frontend will be available at: http://localhost:3000
 
-## 📖 Usage Guide
+### API Endpoints
 
-### 1. Upload PDF
-1. Open the application in your browser
-2. Click "Upload PDF" tab
-3. Select a PDF file from your computer
-4. Click "Upload & Generate Study Plan"
-5. Wait for processing (this may take a few moments)
+- `POST /upload` - Upload documents
+- `POST /qa` - Ask questions
+- `GET /study-plan/<user_id>` - Get study plan
+- `GET /concept-map/<user_id>` - Get concept map
+- `POST /progress/<user_id>` - Update progress
+- `POST /quiz` - Submit quiz answers
+- `POST /register` - User registration
+- `POST /login` - User login
+- `POST /google-login` - Google OAuth login
 
-### 2. Study Plan
-1. After upload, you'll be automatically taken to the Study Plan tab
-2. Review the generated study sections
-3. Check off completed sections to track progress
-4. Review key concepts and quiz questions for each section
+### Troubleshooting
 
-### 3. Q&A System
-1. Click the "Q&A" tab
-2. Type your question about the uploaded document
-3. Click "Ask" to get an AI-powered answer
-4. View confidence scores and context
+#### Common Issues
 
-### 4. Concept Map
-1. Click the "Concept Map" tab
-2. View key concepts extracted from your document
-3. Explore relationships between different concepts
+1. **Build Failures**: Check that all dependencies are in `requirements.txt`
+2. **CORS Errors**: Backend has CORS enabled for all origins
+3. **Port Issues**: Backend uses environment variable `PORT`
+4. **API Connection**: Ensure frontend `REACT_APP_API_URL` points to correct backend
 
-## 🔧 API Endpoints
+#### Debug Commands
 
-### Backend API (http://localhost:5000)
+```bash
+# Check backend logs
+render logs --service study-mate-backend
 
-- `POST /upload` - Upload PDF and generate study plan
-- `POST /qa` - Ask questions about uploaded content
-- `GET /study-plan/<user_id>` - Get study plan for user
-- `GET /concept-map/<user_id>` - Get concept map for user
-- `POST /progress/<user_id>` - Update study progress
-- `GET /health` - Health check endpoint
+# Check frontend logs
+render logs --service study-mate-frontend
 
-## 🎨 Features in Detail
+# Restart services
+render restart --service study-mate-backend
+render restart --service study-mate-frontend
+```
 
-### AI-Generated Study Plans
-- Automatically splits content into manageable sections
-- Extracts key concepts using NLP
-- Generates estimated study times
-- Creates interactive quiz questions
+### Performance Optimization
 
-### Interactive Q&A System
-- Uses state-of-the-art question-answering models
-- Provides confidence scores for answers
-- Shows relevant context from the document
+- Backend uses in-memory storage (replace with database for production)
+- Frontend is optimized with React build
+- Static assets are served efficiently
+- API responses are cached where appropriate
 
-### Concept Map Generation
-- Extracts named entities (people, organizations, locations)
-- Identifies relationships between concepts
-- Visualizes document structure
+### Security Considerations
 
-### Progress Tracking
-- Interactive checkboxes for each section
-- Real-time progress calculation
-- Visual progress bar
+- CORS is enabled for development (restrict in production)
+- Passwords should be hashed in production
+- Use HTTPS in production
+- Implement rate limiting for API endpoints
+- Secure Google Cloud credentials
 
-## 🚀 Deployment
-
-### Google Cloud Platform Deployment
-
-1. **Backend Deployment (App Engine)**
-   ```bash
-   # Create app.yaml
-   cd backend
-   gcloud app deploy
-   ```
-
-2. **Frontend Deployment (Firebase Hosting)**
-   ```bash
-   cd frontend
-   npm run build
-   firebase deploy
-   ```
-
-### Environment Variables
-- `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account key
-- `GCS_BUCKET`: Google Cloud Storage bucket name
-
-## 🔒 Security Considerations
-
-- Service account keys should be kept secure
-- Consider using environment variables for sensitive data
-- Implement proper authentication for production use
-- Add rate limiting for API endpoints
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
+4. Test locally
 5. Submit a pull request
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License.
 
-## 🆘 Support
+## Support
 
-If you encounter any issues:
+For deployment issues:
+1. Check Render documentation
+2. Review the logs in Render dashboard
+3. Ensure all environment variables are set correctly
+4. Verify API endpoints are accessible
 
-1. Check that all dependencies are installed
-2. Verify Google Cloud Storage configuration
-3. Ensure both backend and frontend servers are running
-4. Check browser console for any JavaScript errors
-
-## 🔮 Future Enhancements
-
-- Voice integration for hands-free interaction
-- Advanced concept map visualization with D3.js
-- Collaborative study groups
-- Integration with learning management systems
-- Mobile app development
-- Advanced analytics and insights
-
----
-
-**Study Mate AI** - Empowering students with AI-driven learning experiences! 🎓✨
-# Study-Mate-AI
+For application issues:
+1. Check browser console for frontend errors
+2. Review backend logs in Render
+3. Test API endpoints directly
+4. Verify file uploads are working

@@ -430,8 +430,7 @@ def health_check():
     return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()}), 200
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
-else:
-    # For flask run command
-    app.config['FLASK_RUN_HOST'] = '0.0.0.0'
-    app.config['FLASK_RUN_PORT'] = 5000
+    # Get port from environment variable (Render sets this)
+    port = int(os.environ.get('PORT', 5000))
+    # Use 0.0.0.0 to bind to all available network interfaces
+    app.run(debug=False, host='0.0.0.0', port=port)
