@@ -1,33 +1,67 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from google.cloud import storage
 import os
+import fitz  # PyMuPDF
+import spacy
+from transformers import pipeline
 import json
 import re
 from datetime import datetime, timedelta
 import uuid
 import hashlib
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS for all routes
+
+# Configure Google Cloud Storage
+GCS_BUCKET = 'study-mate-ai-sr-2024'
+GCS_CREDENTIALS = 'service-account.json'
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = GCS_CREDENTIALS
+
+# Initialize GCS client
+gcs_client = storage.Client()
+bucket = gcs_client.bucket(GCS_BUCKET)
+
+# Initialize NLP models
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    # Download the model if not available
+    os.system("python -m spacy download en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
+
+# Initialize QA pipeline
+# Initialize QA pipeline with a simpler model
+try:
+    qa_pipeline = pipeline("question-answering", model="distilbert-base-cased-squad2")
+except:
+    # Fallback to a simpler model if the first one fails
+    qa_pipeline = pipeline("question-answering", model="deepset/roberta-base-squad2")
 
 # In-memory storage for demo (replace with database in production)
 study_sessions = {}
 users = {}  # {email: {password, user_id, history: []}}
 
 def extract_text_from_pdf(pdf_bytes):
-    """Extract text from PDF bytes - simplified version"""
+    """Extract text from PDF bytes"""
     try:
-        # For now, return a placeholder text
-        # In production, you would use PyMuPDF or similar
-        return "This is a sample text extracted from the uploaded document. It contains information that can be used to generate study plans and answer questions."
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        text = ""
+        for page in doc:
+            text += page.get_text()
+        doc.close()
+        return text
     except Exception as e:
         return str(e)
 
 def generate_study_plan(text, user_id):
     """Generate a personalized study plan from PDF text"""
     # Split text into sections
-    sections = text.split('.')
-    sections = [s.strip() for s in sections if len(s.strip()) > 20]
+    sections = text.split('\n\n')
+    sections = [s.strip() for s in sections if len(s.strip()) > 50]
     
     # Create study plan
     study_plan = {
@@ -40,9 +74,10 @@ def generate_study_plan(text, user_id):
     }
     
     for i, section in enumerate(sections[:10]):  # Limit to 10 sections for demo
-        # Extract key concepts (simplified)
-        words = section.split()
-        key_concepts = list(set([word for word in words if len(word) > 4]))[:5]
+        # Extract key concepts using spaCy
+        doc = nlp(section[:500])  # Limit text for processing
+        entities = [ent.text for ent in doc.ents]
+        key_concepts = list(set(entities))[:5]
         
         study_plan["sections"].append({
             "id": i + 1,
@@ -58,7 +93,7 @@ def generate_study_plan(text, user_id):
 
 def generate_quiz_questions(text):
     """Generate quiz questions from text"""
-    # Simple question generation
+    # Simple question generation (replace with more sophisticated approach)
     questions = []
     sentences = text.split('.')
     
@@ -81,59 +116,46 @@ def generate_quiz_questions(text):
 
 def generate_concept_map(text):
     """Generate concept map from text"""
-    # Simplified concept map generation
-    words = text.split()
-    # Extract words that might be concepts (longer words)
-    concepts = list(set([word for word in words if len(word) > 4]))[:10]
+    doc = nlp(text[:2000])  # Limit text for processing
     
+    # Extract entities and their relationships
     entities = {}
-    for concept in concepts:
-        entities[concept] = {
-            "id": concept,
-            "label": concept,
-            "type": "concept",
-            "frequency": 1
-        }
-    
-    # Simple relationships
     relationships = []
-    for i, concept in enumerate(concepts[:5]):
-        if i + 1 < len(concepts):
-            relationships.append({
-                "source": concept,
-                "target": concepts[i + 1],
-                "type": "related"
-            })
+    
+    for ent in doc.ents:
+        if ent.label_ in ['PERSON', 'ORG', 'GPE', 'PRODUCT', 'EVENT']:
+            entities[ent.text] = {
+                "id": ent.text,
+                "label": ent.text,
+                "type": ent.label_,
+                "frequency": entities.get(ent.text, {}).get('frequency', 0) + 1
+            }
+    
+    # Find relationships (simple approach)
+    for sent in doc.sents:
+        for token in sent:
+            if token.dep_ in ['nsubj', 'dobj'] and token.head.pos_ == 'VERB':
+                relationships.append({
+                    "source": token.text,
+                    "target": token.head.text,
+                    "type": "action"
+                })
     
     return {
         "nodes": list(entities.values()),
-        "edges": relationships[:10]
+        "edges": relationships[:20]  # Limit relationships
     }
 
 def answer_question(question, context):
-    """Answer questions using simple text matching"""
+    """Answer questions using the QA pipeline and provide a detailed explanation"""
     try:
-        # Simple answer generation based on keyword matching
-        question_lower = question.lower()
-        context_lower = context.lower()
-        
-        # Find relevant sentences
-        sentences = context.split('.')
-        relevant_sentences = []
-        
-        for sentence in sentences:
-            if any(word in sentence.lower() for word in question_lower.split()):
-                relevant_sentences.append(sentence)
-        
-        if relevant_sentences:
-            answer = relevant_sentences[0]
-            confidence = 0.8
-        else:
-            answer = "I couldn't find a specific answer to that question in the document."
-            confidence = 0.1
-        
-        explanation = f"The answer was found by searching for relevant keywords in the document. Here is the context: {context[:200]}..."
-        
+        result = qa_pipeline(question=question, context=context[:1000])
+        answer = result['answer']
+        confidence = result['score']
+        # Generate a detailed explanation using more context
+        # For now, we use a simple approach: extract a larger context window and add a rationale
+        explanation_context = context[:2000]
+        explanation = f"The answer '{answer}' was found based on the context provided. Here is a more detailed explanation: The model searched the document for relevant information and determined that '{answer}' best answers the question '{question}'.\n\nRelevant context: {explanation_context[:500]}..."
         return {
             "answer": answer,
             "confidence": confidence,
@@ -158,10 +180,34 @@ def upload_pdf():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
     
-    if file and file.filename.lower().endswith(('.pdf', '.doc', '.docx', '.txt')):
+    if file and file.filename.lower().endswith((
+        '.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.xls', '.xlsx')):
         try:
             file_bytes = file.read()
-            text = extract_text_from_pdf(file_bytes)
+            blob = bucket.blob(file.filename)
+            # Determine content type
+            if file.filename.lower().endswith('.pdf'):
+                blob.upload_from_string(file_bytes, content_type='application/pdf')
+                text = extract_text_from_pdf(file_bytes)
+            elif file.filename.lower().endswith(('.doc', '.docx')):
+                blob.upload_from_string(file_bytes, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                # Try to extract text from doc/docx
+                try:
+                    import docx
+                    from io import BytesIO
+                    doc = docx.Document(BytesIO(file_bytes))
+                    text = '\n'.join([para.text for para in doc.paragraphs])
+                except Exception:
+                    text = 'Text extraction from DOC/DOCX failed.'
+            elif file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                blob.upload_from_string(file_bytes, content_type='image/jpeg')
+                text = 'Text extraction from images is not yet supported.'
+            elif file.filename.lower().endswith(('.xls', '.xlsx')):
+                blob.upload_from_string(file_bytes, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                text = 'Text extraction from Excel files is not yet supported.'
+            else:
+                blob.upload_from_string(file_bytes)
+                text = 'Unsupported file type.'
             
             # Generate user ID
             user_id = str(uuid.uuid4())
@@ -335,12 +381,12 @@ def google_login():
     if not credential:
         return jsonify({'error': 'Missing Google credential'}), 400
     try:
-        # Simplified Google login (in production, verify the token)
-        email = "user@example.com"  # Placeholder
+        idinfo = id_token.verify_oauth2_token(credential, google_requests.Request())
+        email = idinfo['email']
         # Create user if not exists
         if email not in users:
             user_id = str(uuid.uuid4())
-            name = "Google User"
+            name = idinfo.get('name', email.split('@')[0])
             users[email] = {
                 'password': None,
                 'user_id': user_id,
