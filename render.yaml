@@ -11,7 +11,7 @@ services:
         value: production
     plan: free
 
-  - type: web
+  - type: static
     name: study-mate-frontend
     env: static
     buildCommand: cd frontend && npm install && npm run build
@@ -19,4 +19,3 @@ services:
     envVars:
       - key: REACT_APP_API_URL
         value: https://study-mate-backend.onrender.com
-    plan: free
