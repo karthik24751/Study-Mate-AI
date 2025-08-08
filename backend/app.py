@@ -27,13 +27,18 @@ except Exception as e:
     gcs_client = None
     bucket = None
 
-# Initialize NLP models
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    # Download the model if not available
-    os.system("python -m spacy download en_core_web_sm")
-    nlp = spacy.load("en_core_web_sm")
+# Lazy-load spaCy model to speed cold starts on Cloud Run
+nlp = None
+
+def get_nlp():
+    global nlp
+    if nlp is None:
+        try:
+            nlp = spacy.load("en_core_web_sm")
+        except OSError:
+            os.system("python -m spacy download en_core_web_sm")
+            nlp = spacy.load("en_core_web_sm")
+    return nlp
 
 def _score_sentence_overlap(question_text: str, sentence_text: str) -> float:
     """Score overlap between question and a sentence using simple token overlap."""
@@ -53,7 +58,7 @@ def _extract_best_sentence_answer(question_text: str, context_text: str) -> dict
     """Pick the sentence from context with the highest keyword overlap as a naive answer."""
     # Use spaCy sentence segmentation for better sentence boundaries
     try:
-        doc = nlp(context_text[:4000])  # limit for performance
+        doc = get_nlp()(context_text[:4000])  # limit for performance
         sentences = [sent.text.strip() for sent in doc.sents if len(sent.text.strip()) > 0]
     except Exception:
         # Fallback to simple split
@@ -100,7 +105,7 @@ def generate_study_plan(text, user_id):
     
     for i, section in enumerate(sections[:10]):  # Limit to 10 sections for demo
         # Extract key concepts using spaCy
-        doc = nlp(section[:500])  # Limit text for processing
+        doc = get_nlp()(section[:500])  # Limit text for processing
         entities = [ent.text for ent in doc.ents]
         key_concepts = list(set(entities))[:5]
         
@@ -141,7 +146,7 @@ def generate_quiz_questions(text):
 
 def generate_concept_map(text):
     """Generate concept map from text"""
-    doc = nlp(text[:2000])  # Limit text for processing
+    doc = get_nlp()(text[:2000])  # Limit text for processing
     
     # Extract entities and their relationships
     entities = {}
