@@ -424,10 +424,10 @@ def google_login():
     try:
         idinfo = id_token.verify_oauth2_token(credential, google_requests.Request())
         email = idinfo['email']
+        name = idinfo.get('name', email.split('@')[0])
         # Create user if not exists
         if email not in users:
             user_id = str(uuid.uuid4())
-            name = idinfo.get('name', email.split('@')[0])
             users[email] = {
                 'password': None,
                 'user_id': user_id,
@@ -436,6 +436,7 @@ def google_login():
             }
         else:
             user_id = users[email]['user_id']
+            name = users[email].get('name', name)  # Use stored name or fallback
         return jsonify({'message': 'Google login successful', 'user_id': user_id, 'name': name, 'email': email}), 200
     except Exception as e:
         return jsonify({'error': f'Google token verification failed: {str(e)}'}), 401
