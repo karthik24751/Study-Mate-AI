@@ -27,7 +27,14 @@ import {
   Alert,
   Snackbar,
   Fade,
-  ListItemButton
+  ListItemButton,
+  Avatar,
+  Fab,
+  Zoom,
+  Slide,
+  Grow,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Upload as UploadIcon,
@@ -39,7 +46,14 @@ import {
   Home as HomeIcon,
   History as HistoryIcon,
   Person as PersonIcon,
-  Google as GoogleIcon
+  Google as GoogleIcon,
+  School as SchoolIcon,
+  Psychology as PsychologyIcon,
+  AutoAwesome as AutoAwesomeIcon,
+  Dashboard as DashboardIcon,
+  ExitToApp as LogoutIcon,
+  ArrowForward as ArrowForwardIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import './App.css';
@@ -55,7 +69,7 @@ function App() {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [currentView, setCurrentView] = useState('home');
+  const [currentView, setCurrentView] = useState('welcome'); // Changed from 'home' to 'welcome'
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
@@ -65,14 +79,45 @@ function App() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const [quizAnswers, setQuizAnswers] = useState({});
   const [quizResults, setQuizResults] = useState(null);
+  const [welcomeAnimationComplete, setWelcomeAnimationComplete] = useState(false);
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Google OAuth Client ID
   const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
+
+  // Welcome animation effect
+  useEffect(() => {
+    if (currentView === 'welcome') {
+      const timer = setTimeout(() => {
+        setWelcomeAnimationComplete(true);
+      }, 3000); // 3 seconds for welcome animation
+      return () => clearTimeout(timer);
+    }
+  }, [currentView]);
 
   const showSnackbar = (message, severity = 'info') => {
     setSnackbar({ open: true, message, severity });
   };
 
+  const handleWelcomeComplete = () => {
+    setCurrentView('login');
+  };
+
+  const handleLoginSuccess = () => {
+    setCurrentView('dashboard');
+    setLoginDialogOpen(false);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setCurrentView('welcome');
+    setWelcomeAnimationComplete(false);
+    showSnackbar('Logged out successfully', 'info');
+  };
+
+  // ... existing functions (handleFileUpload, handleQuestionSubmit, etc.) remain the same
   const handleFileUpload = async () => {
     if (!file) {
       showSnackbar('Please select a file first', 'warning');
@@ -239,6 +284,7 @@ function App() {
         setRegisterDialogOpen(false);
         setRegisterData({ name: '', email: '', password: '' });
         showSnackbar('Registration successful!', 'success');
+        handleLoginSuccess();
       } else {
         showSnackbar(data.error || 'Registration failed', 'error');
       }
@@ -273,9 +319,9 @@ function App() {
           name: data.name,
           email: loginData.email
         });
-        setLoginDialogOpen(false);
         setLoginData({ email: '', password: '' });
         showSnackbar('Login successful!', 'success');
+        handleLoginSuccess();
       } else {
         showSnackbar(data.error || 'Login failed', 'error');
       }
@@ -308,6 +354,7 @@ function App() {
           email: data.email
         });
         showSnackbar('Google login successful!', 'success');
+        handleLoginSuccess();
       } else {
         showSnackbar(data.error || 'Google login failed', 'error');
       }
@@ -318,96 +365,438 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    showSnackbar('Logged out successfully', 'info');
-  };
-
-  const renderHome = () => (
-    <Box sx={{ textAlign: 'center', py: 4 }}>
-      <Typography variant="h3" component="h1" gutterBottom>
-        Study Mate AI
-      </Typography>
-      <Typography variant="h6" color="text.secondary" paragraph>
-        Your AI-powered study companion
-      </Typography>
+  // Welcome Screen
+  const renderWelcome = () => (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
+    >
+      {/* Animated background elements */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '20%',
+          left: '10%',
+          width: 100,
+          height: 100,
+          borderRadius: '50%',
+          background: 'rgba(255, 255, 255, 0.1)',
+          animation: 'float 6s ease-in-out infinite',
+        }}
+      />
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: '20%',
+          right: '10%',
+          width: 150,
+          height: 150,
+          borderRadius: '50%',
+          background: 'rgba(255, 255, 255, 0.1)',
+          animation: 'float 8s ease-in-out infinite reverse',
+        }}
+      />
       
-      <Grid container spacing={3} sx={{ mt: 4 }}>
-        <Grid item xs={12} md={4}>
-          <Card 
-            sx={{ 
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: 4
-              }
-            }}
-            onClick={() => setCurrentView('upload')}
-          >
-            <CardContent>
-              <UploadIcon sx={{ fontSize: 40, color: 'primary.main', mb: 2 }} />
-              <Typography variant="h6" gutterBottom>
-                Upload Documents
+      <Container maxWidth="md">
+        <Box sx={{ textAlign: 'center', color: 'white' }}>
+          <Grow in={true} timeout={1000}>
+            <Box>
+              <AutoAwesomeIcon sx={{ fontSize: 80, mb: 2, animation: 'pulse 2s infinite' }} />
+              <Typography 
+                variant="h2" 
+                component="h1" 
+                gutterBottom
+                sx={{ 
+                  fontWeight: 700,
+                  textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
+                  mb: 2
+                }}
+              >
+                Welcome to StudyMate AI
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Upload PDFs, documents, and images to get started with your study session.
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} md={4}>
-          <Card 
-            sx={{ 
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: 4
-              }
-            }}
-            onClick={() => setCurrentView('qa')}
-          >
-            <CardContent>
-              <QAIcon sx={{ fontSize: 40, color: 'primary.main', mb: 2 }} />
-              <Typography variant="h6" gutterBottom>
-                Ask Questions
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Get instant answers to your questions about the uploaded content.
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} md={4}>
-          <Card 
-            sx={{ 
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: 4
-              }
-            }}
-            onClick={() => setCurrentView('study-plan')}
-          >
-            <CardContent>
-              <TimelineIcon sx={{ fontSize: 40, color: 'primary.main', mb: 2 }} />
-              <Typography variant="h6" gutterBottom>
-                Study Plans
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Generate personalized study plans and track your progress.
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+            </Box>
+          </Grow>
+          
+          <Slide direction="up" in={true} timeout={1500}>
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                mb: 4,
+                opacity: 0.9,
+                textShadow: '1px 1px 2px rgba(0,0,0,0.3)'
+              }}
+            >
+              Your AI-powered study companion
+            </Typography>
+          </Slide>
+          
+          <Zoom in={welcomeAnimationComplete} timeout={500}>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={handleWelcomeComplete}
+              sx={{
+                background: 'rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                color: 'white',
+                px: 4,
+                py: 2,
+                fontSize: '1.2rem',
+                fontWeight: 600,
+                '&:hover': {
+                  background: 'rgba(255, 255, 255, 0.3)',
+                  transform: 'translateY(-2px)',
+                },
+                transition: 'all 0.3s ease'
+              }}
+              endIcon={<ArrowForwardIcon />}
+            >
+              Get Started
+            </Button>
+          </Zoom>
+        </Box>
+      </Container>
     </Box>
   );
 
+  // Modern Login Screen
+  const renderLogin = () => (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 2
+      }}
+    >
+      <Container maxWidth="sm">
+        <Fade in={true} timeout={800}>
+          <Paper
+            elevation={24}
+            sx={{
+              p: 4,
+              borderRadius: 3,
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.3)'
+            }}
+          >
+            <Box sx={{ textAlign: 'center', mb: 4 }}>
+              <SchoolIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
+              <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
+                Welcome Back
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Sign in to continue your learning journey
+              </Typography>
+            </Box>
+
+            <Box sx={{ mb: 3 }}>
+              <Button
+                fullWidth
+                variant="outlined"
+                size="large"
+                onClick={() => setLoginDialogOpen(true)}
+                sx={{
+                  mb: 2,
+                  py: 1.5,
+                  borderColor: 'primary.main',
+                  color: 'primary.main',
+                  '&:hover': {
+                    borderColor: 'primary.dark',
+                    backgroundColor: 'primary.main',
+                    color: 'white'
+                  }
+                }}
+              >
+                Sign In with Email
+              </Button>
+
+              {GOOGLE_CLIENT_ID && (
+                <GoogleLogin
+                  onSuccess={handleGoogleLogin}
+                  onError={() => showSnackbar('Google login failed', 'error')}
+                  useOneTap
+                  theme="filled_blue"
+                  size="large"
+                  text="continue_with"
+                  shape="rectangular"
+                  width="100%"
+                />
+              )}
+            </Box>
+
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Don't have an account?
+              </Typography>
+              <Button
+                variant="text"
+                onClick={() => setRegisterDialogOpen(true)}
+                sx={{ fontWeight: 600 }}
+              >
+                Create Account
+              </Button>
+            </Box>
+          </Paper>
+        </Fade>
+      </Container>
+    </Box>
+  );
+
+  // Modern Dashboard
+  const renderDashboard = () => (
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
+      {/* Header */}
+      <AppBar 
+        position="static" 
+        sx={{ 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+        }}
+      >
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            edge="start"
+            onClick={() => setDrawerOpen(!drawerOpen)}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+            <SchoolIcon sx={{ mr: 1 }} />
+            <Typography variant="h6" component="div">
+              StudyMate AI
+            </Typography>
+          </Box>
+
+          {user && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)' }}>
+                <PersonIcon />
+              </Avatar>
+              <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
+                Welcome, {user.name}!
+              </Typography>
+              <Button 
+                color="inherit" 
+                onClick={handleLogout}
+                startIcon={<LogoutIcon />}
+                sx={{ display: { xs: 'none', sm: 'flex' } }}
+              >
+                Logout
+              </Button>
+            </Box>
+          )}
+        </Toolbar>
+      </AppBar>
+
+      {/* Main Content */}
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Fade in={true} timeout={800}>
+          <Box>
+            <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 700, mb: 4 }}>
+              Your Learning Dashboard
+            </Typography>
+
+            <Grid container spacing={3}>
+              {/* Quick Actions */}
+              <Grid item xs={12} md={8}>
+                <Card 
+                  sx={{ 
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    mb: 3
+                  }}
+                >
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                      Quick Actions
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={4}>
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          startIcon={<UploadIcon />}
+                          onClick={() => setCurrentView('upload')}
+                          sx={{
+                            background: 'rgba(255,255,255,0.2)',
+                            '&:hover': { background: 'rgba(255,255,255,0.3)' }
+                          }}
+                        >
+                          Upload Document
+                        </Button>
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          startIcon={<QAIcon />}
+                          onClick={() => setCurrentView('qa')}
+                          sx={{
+                            background: 'rgba(255,255,255,0.2)',
+                            '&:hover': { background: 'rgba(255,255,255,0.3)' }
+                          }}
+                        >
+                          Ask Questions
+                        </Button>
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          startIcon={<QuizIcon />}
+                          onClick={() => setCurrentView('quiz')}
+                          sx={{
+                            background: 'rgba(255,255,255,0.2)',
+                            '&:hover': { background: 'rgba(255,255,255,0.3)' }
+                          }}
+                        >
+                          Take Quiz
+                        </Button>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Stats */}
+              <Grid item xs={12} md={4}>
+                <Card sx={{ height: '100%', background: 'rgba(255,255,255,0.9)' }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                      Your Progress
+                    </Typography>
+                    <Box sx={{ textAlign: 'center', py: 2 }}>
+                      <Typography variant="h3" color="primary.main" sx={{ fontWeight: 700 }}>
+                        {studyPlan ? Math.round(studyPlan.progress) : 0}%
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Overall Progress
+                      </Typography>
+                    </Box>
+                    {studyPlan && (
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={studyPlan.progress} 
+                        sx={{ height: 8, borderRadius: 4 }}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Feature Cards */}
+              <Grid item xs={12} md={4}>
+                <Card 
+                  sx={{ 
+                    height: '100%',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      boxShadow: 8
+                    }
+                  }}
+                  onClick={() => setCurrentView('upload')}
+                >
+                  <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                    <UploadIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                      Upload Documents
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Upload PDFs, documents, and images to get started with your study session.
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <Card 
+                  sx={{ 
+                    height: '100%',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      boxShadow: 8
+                    }
+                  }}
+                  onClick={() => setCurrentView('qa')}
+                >
+                  <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                    <QAIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                      Ask Questions
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Get instant answers to your questions about the uploaded content.
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <Card 
+                  sx={{ 
+                    height: '100%',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      boxShadow: 8
+                    }
+                  }}
+                  onClick={() => setCurrentView('study-plan')}
+                >
+                  <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                    <TimelineIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                      Study Plans
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Generate personalized study plans and track your progress.
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          </Box>
+        </Fade>
+      </Container>
+
+      {/* Floating Action Button */}
+      <Fab
+        color="primary"
+        aria-label="add"
+        sx={{
+          position: 'fixed',
+          bottom: 16,
+          right: 16,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        }}
+        onClick={() => setCurrentView('upload')}
+      >
+        <UploadIcon />
+      </Fab>
+    </Box>
+  );
+
+  // ... existing render functions (renderUpload, renderStudyPlan, etc.) remain the same
   const renderUpload = () => (
     <Box sx={{ py: 4 }}>
       <Typography variant="h4" gutterBottom>
@@ -678,8 +1067,12 @@ function App() {
 
   const renderContent = () => {
     switch (currentView) {
-      case 'home':
-        return renderHome();
+      case 'welcome':
+        return renderWelcome();
+      case 'login':
+        return renderLogin();
+      case 'dashboard':
+        return renderDashboard();
       case 'upload':
         return renderUpload();
       case 'study-plan':
@@ -691,12 +1084,12 @@ function App() {
       case 'quiz':
         return renderQuiz();
       default:
-        return renderHome();
+        return renderWelcome();
     }
   };
 
   const menuItems = [
-    { text: 'Home', icon: <HomeIcon />, view: 'home' },
+    { text: 'Dashboard', icon: <DashboardIcon />, view: 'dashboard' },
     { text: 'Upload', icon: <UploadIcon />, view: 'upload' },
     { text: 'Study Plan', icon: <TimelineIcon />, view: 'study-plan' },
     { text: 'Ask Questions', icon: <QAIcon />, view: 'qa' },
@@ -707,85 +1100,59 @@ function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <Box sx={{ display: 'flex' }}>
-        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-          <Toolbar>
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={() => setDrawerOpen(!drawerOpen)}
-              sx={{ mr: 2 }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              Study Mate AI
-            </Typography>
-            {user ? (
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Typography variant="body2" sx={{ mr: 2 }}>
-                  Welcome, {user.name}!
-                </Typography>
-                <Button color="inherit" onClick={handleLogout}>
-                  Logout
-                </Button>
-              </Box>
-            ) : (
-              <Box>
-                <Button color="inherit" onClick={() => setLoginDialogOpen(true)}>
-                  Login
-                </Button>
-                <Button color="inherit" onClick={() => setRegisterDialogOpen(true)}>
-                  Register
-                </Button>
-              </Box>
-            )}
-          </Toolbar>
-        </AppBar>
-
-        <Drawer
-          variant="temporary"
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          sx={{
-            width: 240,
-            flexShrink: 0,
-            '& .MuiDrawer-paper': {
+        {/* Drawer for dashboard */}
+        {currentView === 'dashboard' && (
+          <Drawer
+            variant="temporary"
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            sx={{
               width: 240,
-              boxSizing: 'border-box',
-            },
-          }}
-        >
-          <Toolbar />
-          <Box sx={{ overflow: 'auto' }}>
-            <List>
-              {menuItems.map((item) => (
-                <ListItemButton
-                  key={item.text}
-                  onClick={() => {
-                    setCurrentView(item.view);
-                    setDrawerOpen(false);
-                  }}
-                >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.text} />
-                </ListItemButton>
-              ))}
-            </List>
-          </Box>
-        </Drawer>
+              flexShrink: 0,
+              '& .MuiDrawer-paper': {
+                width: 240,
+                boxSizing: 'border-box',
+              },
+            }}
+          >
+            <Toolbar />
+            <Box sx={{ overflow: 'auto' }}>
+              <List>
+                {menuItems.map((item) => (
+                  <ListItemButton
+                    key={item.text}
+                    onClick={() => {
+                      setCurrentView(item.view);
+                      setDrawerOpen(false);
+                    }}
+                  >
+                    <ListItemIcon>{item.icon}</ListItemIcon>
+                    <ListItemText primary={item.text} />
+                  </ListItemButton>
+                ))}
+              </List>
+            </Box>
+          </Drawer>
+        )}
 
-        <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-          <Toolbar />
-          <Container maxWidth="lg">
-            <Fade in timeout={300}>
-              <Box key={currentView}>{renderContent()}</Box>
-            </Fade>
-          </Container>
+        {/* Main content */}
+        <Box component="main" sx={{ flexGrow: 1, width: '100%' }}>
+          {renderContent()}
         </Box>
 
         {/* Login Dialog */}
-        <Dialog open={loginDialogOpen} onClose={() => setLoginDialogOpen(false)}>
-          <DialogTitle>Login</DialogTitle>
+        <Dialog 
+          open={loginDialogOpen} 
+          onClose={() => setLoginDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+            <SchoolIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              Sign In
+            </Typography>
+          </DialogTitle>
           <DialogContent>
             <TextField
               autoFocus
@@ -819,17 +1186,32 @@ function App() {
               <Alert severity="warning">Google login not configured</Alert>
             )}
           </DialogContent>
-          <DialogActions>
+          <DialogActions sx={{ p: 3, pt: 1 }}>
             <Button onClick={() => setLoginDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleLogin} disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+            <Button 
+              onClick={handleLogin} 
+              disabled={loading}
+              variant="contained"
+              sx={{ minWidth: 100 }}
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </DialogActions>
         </Dialog>
 
         {/* Register Dialog */}
-        <Dialog open={registerDialogOpen} onClose={() => setRegisterDialogOpen(false)}>
-          <DialogTitle>Register</DialogTitle>
+        <Dialog 
+          open={registerDialogOpen} 
+          onClose={() => setRegisterDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+            <SchoolIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              Create Account
+            </Typography>
+          </DialogTitle>
           <DialogContent>
             <TextField
               autoFocus
@@ -861,10 +1243,15 @@ function App() {
               onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
             />
           </DialogContent>
-          <DialogActions>
+          <DialogActions sx={{ p: 3, pt: 1 }}>
             <Button onClick={() => setRegisterDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleRegister} disabled={loading}>
-              {loading ? 'Registering...' : 'Register'}
+            <Button 
+              onClick={handleRegister} 
+              disabled={loading}
+              variant="contained"
+              sx={{ minWidth: 100 }}
+            >
+              {loading ? 'Creating...' : 'Create Account'}
             </Button>
           </DialogActions>
         </Dialog>
