@@ -186,6 +186,47 @@ function App() {
   const handleViewChange = (newView) => {
     setCurrentView(newView);
     setViewHistory(prev => [...prev, newView]);
+    
+    // Fetch study plan when navigating to study plan page
+    if (newView === 'study-plan' && studyPlan?.user_id) {
+      fetchStudyPlan(studyPlan.user_id);
+    }
+    
+    // Fetch quiz questions when navigating to quiz page
+    if (newView === 'quiz' && studyPlan?.user_id) {
+      fetchQuizQuestions(studyPlan.user_id);
+    }
+  };
+
+  const fetchStudyPlan = async (userId) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/study-plan/${userId}`);
+      const data = await response.json();
+      if (response.ok && data.study_plan) {
+        setStudyPlan(data.study_plan);
+      }
+    } catch (error) {
+      console.error('Failed to fetch study plan:', error);
+    }
+  };
+
+  const fetchQuizQuestions = async (userId) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/quiz`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.questions) {
+        setQuizQuestions(data.questions);
+      }
+    } catch (error) {
+      console.error('Failed to fetch quiz questions:', error);
+    }
   };
 
   const toggleDarkMode = () => {
@@ -211,11 +252,26 @@ function App() {
 
       const data = await response.json();
       if (response.ok) {
-        showSnackbar('File uploaded successfully!', 'success');
+        // Store the study plan and concept map from the response
+        if (data.study_plan) {
+          setStudyPlan(data.study_plan);
+        }
+        if (data.concept_map) {
+          // You can add concept map state if needed
+          console.log('Concept map generated:', data.concept_map);
+        }
+        
+        // Generate quiz questions for the uploaded content
+        await generateQuizQuestions(data.user_id);
+        
+        showSnackbar('File uploaded successfully! Study plan and quiz generated.', 'success');
         setFile(null);
         // Reset file input
         const fileInput = document.getElementById('file-input');
         if (fileInput) fileInput.value = '';
+        
+        // Navigate to dashboard to show the generated content
+        handleViewChange('dashboard');
       } else {
         showSnackbar(data.error || 'Upload failed', 'error');
       }
@@ -223,6 +279,26 @@ function App() {
       showSnackbar('Upload failed: ' + error.message, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateQuizQuestions = async (userId) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/quiz`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.questions) {
+        setQuizQuestions(data.questions);
+        showSnackbar('Quiz questions generated!', 'success');
+      }
+    } catch (error) {
+      console.error('Failed to generate quiz questions:', error);
     }
   };
 
@@ -234,12 +310,18 @@ function App() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/ask`, {
+      // Get the current user's session ID from the study plan
+      const userId = studyPlan?.user_id || 'default';
+      
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/qa`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ question: question }),
+        body: JSON.stringify({ 
+          question: question,
+          user_id: userId
+        }),
       });
 
       const data = await response.json();
@@ -879,22 +961,82 @@ function App() {
           </Typography>
           {studyPlan ? (
             <Box>
-              <Typography variant="body1" paragraph>
-                {studyPlan.plan}
-              </Typography>
-              <LinearProgress 
-                variant="determinate" 
-                value={studyPlan.progress} 
-                sx={{ height: 10, borderRadius: 5, mb: 2 }}
-              />
-              <Typography variant="body2" color="text.secondary">
-                Progress: {Math.round(studyPlan.progress)}%
-              </Typography>
+              {studyPlan.sections && studyPlan.sections.length > 0 ? (
+                <Box>
+                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+                    Study Sections:
+                  </Typography>
+                  {studyPlan.sections.map((section, index) => (
+                    <Card key={index} sx={{ mb: 2, p: 2, bgcolor: 'grey.50' }}>
+                      <Typography variant="subtitle1" fontWeight="bold">
+                        Section {index + 1}: {section.title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {section.description}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        Estimated time: {section.estimated_time}
+                      </Typography>
+                    </Card>
+                  ))}
+                </Box>
+              ) : (
+                <Typography variant="body1" paragraph>
+                  {studyPlan.plan || 'Your personalized study plan has been generated based on your uploaded document.'}
+                </Typography>
+              )}
+              
+              {studyPlan.progress !== undefined && (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Your Progress
+                  </Typography>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={studyPlan.progress || 0} 
+                    sx={{ height: 10, borderRadius: 5, mb: 2 }}
+                  />
+                  <Typography variant="body2" color="text.secondary">
+                    Progress: {Math.round(studyPlan.progress || 0)}%
+                  </Typography>
+                </Box>
+              )}
+              
+              <Box sx={{ mt: 3 }}>
+                <Button
+                  variant="contained"
+                  onClick={() => handleViewChange('quiz')}
+                  startIcon={<QuizIcon />}
+                  sx={{ mr: 2 }}
+                >
+                  Take Quiz
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => handleViewChange('qa')}
+                  startIcon={<QAIcon />}
+                >
+                  Ask Questions
+                </Button>
+              </Box>
             </Box>
           ) : (
-            <Typography variant="body1" color="text.secondary">
-              No study plan available. Upload some documents to generate a personalized plan.
-            </Typography>
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <TimelineIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                No Study Plan Available
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                Upload a document to generate a personalized study plan with sections, time estimates, and progress tracking.
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => handleViewChange('upload')}
+                startIcon={<UploadIcon />}
+              >
+                Upload Document
+              </Button>
+            </Box>
           )}
         </Card>
       </Container>
@@ -977,12 +1119,15 @@ function App() {
           </Typography>
           {quizQuestions.length > 0 ? (
             <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Answer all questions to test your understanding of the uploaded content.
+              </Typography>
               {quizQuestions.map((q, index) => (
-                <Box key={index} sx={{ mb: 3 }}>
+                <Card key={index} sx={{ mb: 3, p: 3, bgcolor: 'grey.50' }}>
                   <Typography variant="h6" gutterBottom>
                     Question {index + 1}: {q.question}
                   </Typography>
-                  {q.options.map((option, optIndex) => (
+                  {q.options && q.options.map((option, optIndex) => (
                     <Button
                       key={optIndex}
                       variant={quizAnswers[index] === optIndex ? "contained" : "outlined"}
@@ -993,20 +1138,56 @@ function App() {
                       {option}
                     </Button>
                   ))}
-                </Box>
+                </Card>
               ))}
-              <Button
-                variant="contained"
-                onClick={() => {/* Handle quiz submission */}}
-                disabled={Object.keys(quizAnswers).length < quizQuestions.length}
-              >
-                Submit Quiz
-              </Button>
+              <Box sx={{ mt: 3, textAlign: 'center' }}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={() => {
+                    const score = Object.keys(quizAnswers).length;
+                    const total = quizQuestions.length;
+                    showSnackbar(`Quiz completed! You answered ${score} out of ${total} questions.`, 'success');
+                    setQuizResults({ score, total });
+                  }}
+                  disabled={Object.keys(quizAnswers).length < quizQuestions.length}
+                  startIcon={<CheckCircleIcon />}
+                >
+                  Submit Quiz ({Object.keys(quizAnswers).length}/{quizQuestions.length})
+                </Button>
+              </Box>
+              
+              {quizResults && (
+                <Card sx={{ mt: 3, p: 3, bgcolor: 'success.light', color: 'white' }}>
+                  <Typography variant="h6" gutterBottom>
+                    Quiz Results
+                  </Typography>
+                  <Typography variant="body1">
+                    You answered {quizResults.score} out of {quizResults.total} questions correctly!
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    Score: {Math.round((quizResults.score / quizResults.total) * 100)}%
+                  </Typography>
+                </Card>
+              )}
             </Box>
           ) : (
-            <Typography variant="body1" color="text.secondary">
-              No quiz questions available. Upload some documents to generate quiz questions.
-            </Typography>
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <QuizIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                No Quiz Questions Available
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                Upload a document to generate quiz questions based on the content.
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => handleViewChange('upload')}
+                startIcon={<UploadIcon />}
+              >
+                Upload Document
+              </Button>
+            </Box>
           )}
         </Card>
       </Container>
