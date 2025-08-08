@@ -15,7 +15,6 @@ import {
   DialogContent,
   DialogActions,
   List,
-  ListItem,
   ListItemText,
   Chip,
   AppBar,
@@ -25,7 +24,9 @@ import {
   ListItemIcon,
   Divider,
   Alert,
-  Snackbar
+  Snackbar,
+  Fade,
+  ListItemButton
 } from '@mui/material';
 import {
   Upload as UploadIcon,
@@ -65,7 +66,7 @@ function App() {
   const [quizResults, setQuizResults] = useState(null);
 
   // Google OAuth Client ID
-  const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID"; // Replace with your actual Google Client ID
+  const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
 
   const showSnackbar = (message, severity = 'info') => {
     setSnackbar({ open: true, message, severity });
@@ -727,8 +728,7 @@ function App() {
           <Box sx={{ overflow: 'auto' }}>
             <List>
               {menuItems.map((item) => (
-                <ListItem
-                  button
+                <ListItemButton
                   key={item.text}
                   onClick={() => {
                     setCurrentView(item.view);
@@ -737,7 +737,7 @@ function App() {
                 >
                   <ListItemIcon>{item.icon}</ListItemIcon>
                   <ListItemText primary={item.text} />
-                </ListItem>
+                </ListItemButton>
               ))}
             </List>
           </Box>
@@ -746,7 +746,9 @@ function App() {
         <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
           <Toolbar />
           <Container maxWidth="lg">
-            {renderContent()}
+            <Fade in timeout={300}>
+              <Box key={currentView}>{renderContent()}</Box>
+            </Fade>
           </Container>
         </Box>
 
@@ -774,6 +776,17 @@ function App() {
               value={loginData.password}
               onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
             />
+
+            <Divider sx={{ my: 2 }}>or</Divider>
+            {GOOGLE_CLIENT_ID ? (
+              <GoogleLogin
+                onSuccess={handleGoogleLogin}
+                onError={() => showSnackbar('Google login failed', 'error')}
+                useOneTap
+              />
+            ) : (
+              <Alert severity="warning">Google login not configured</Alert>
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setLoginDialogOpen(false)}>Cancel</Button>

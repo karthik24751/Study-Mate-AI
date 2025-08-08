@@ -4,7 +4,6 @@ from google.cloud import storage
 import os
 import fitz  # PyMuPDF
 import spacy
-from transformers import pipeline
 import json
 import re
 from datetime import datetime, timedelta
@@ -36,13 +35,36 @@ except OSError:
     os.system("python -m spacy download en_core_web_sm")
     nlp = spacy.load("en_core_web_sm")
 
-# Initialize QA pipeline
-# Initialize QA pipeline with a simpler model
-try:
-    qa_pipeline = pipeline("question-answering", model="distilbert-base-cased-squad2")
-except:
-    # Fallback to a simpler model if the first one fails
-    qa_pipeline = pipeline("question-answering", model="deepset/roberta-base-squad2")
+def _score_sentence_overlap(question_text: str, sentence_text: str) -> float:
+    """Score overlap between question and a sentence using simple token overlap."""
+    try:
+        question_tokens = set(re.findall(r"[A-Za-z0-9]+", question_text.lower()))
+        sentence_tokens = set(re.findall(r"[A-Za-z0-9]+", sentence_text.lower()))
+        if not question_tokens or not sentence_tokens:
+            return 0.0
+        overlap = question_tokens.intersection(sentence_tokens)
+        # Jaccard-like score
+        score = len(overlap) / max(1, len(question_tokens.union(sentence_tokens)))
+        return score
+    except Exception:
+        return 0.0
+
+def _extract_best_sentence_answer(question_text: str, context_text: str) -> dict:
+    """Pick the sentence from context with the highest keyword overlap as a naive answer."""
+    # Use spaCy sentence segmentation for better sentence boundaries
+    try:
+        doc = nlp(context_text[:4000])  # limit for performance
+        sentences = [sent.text.strip() for sent in doc.sents if len(sent.text.strip()) > 0]
+    except Exception:
+        # Fallback to simple split
+        sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", context_text[:4000]) if len(s.strip()) > 0]
+
+    if not sentences:
+        return {"answer": "", "confidence": 0.0, "match_sentence": ""}
+
+    best_sentence = max(sentences, key=lambda s: _score_sentence_overlap(question_text, s))
+    confidence = _score_sentence_overlap(question_text, best_sentence)
+    return {"answer": best_sentence, "confidence": float(confidence), "match_sentence": best_sentence}
 
 # In-memory storage for demo (replace with database in production)
 study_sessions = {}
@@ -150,28 +172,29 @@ def generate_concept_map(text):
     }
 
 def answer_question(question, context):
-    """Answer questions using the QA pipeline and provide a detailed explanation"""
-    try:
-        result = qa_pipeline(question=question, context=context[:1000])
-        answer = result['answer']
-        confidence = result['score']
-        # Generate a detailed explanation using more context
-        # For now, we use a simple approach: extract a larger context window and add a rationale
-        explanation_context = context[:2000]
-        explanation = f"The answer '{answer}' was found based on the context provided. Here is a more detailed explanation: The model searched the document for relevant information and determined that '{answer}' best answers the question '{question}'.\n\nRelevant context: {explanation_context[:500]}..."
-        return {
-            "answer": answer,
-            "confidence": confidence,
-            "context": context[:200] + "...",
-            "explanation": explanation
-        }
-    except Exception as e:
+    """Naive QA: pick the most relevant sentence from the context based on token overlap."""
+    best = _extract_best_sentence_answer(question, context)
+    answer_text = best.get("answer", "")
+    confidence = best.get("confidence", 0.0)
+    explanation_context = context[:1000]
+    if not answer_text:
         return {
             "answer": "I couldn't find a specific answer to that question in the document.",
             "confidence": 0.0,
             "context": context[:200] + "...",
-            "explanation": "No detailed explanation available due to an error."
+            "explanation": "No clear match found using simple keyword overlap."
         }
+    explanation = (
+        "The answer is selected as the most relevant sentence by keyword overlap between the question and the document.\n\n"
+        f"Matched sentence: {answer_text}\n\n"
+        f"Relevant context: {explanation_context[:500]}..."
+    )
+    return {
+        "answer": answer_text,
+        "confidence": confidence,
+        "context": context[:200] + "...",
+        "explanation": explanation
+    }
 
 @app.route('/upload', methods=['POST'])
 def upload_pdf():

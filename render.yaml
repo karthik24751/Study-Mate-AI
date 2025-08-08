@@ -2,11 +2,11 @@ services:
   - type: web
     name: study-mate-backend
     env: python
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && python app.py
+    buildCommand: |
+      pip install -r backend/requirements.txt && \
+      python -m spacy download en_core_web_sm
+    startCommand: cd backend && gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 app:app
     envVars:
-      - key: PORT
-        value: 10000
       - key: FLASK_ENV
         value: production
     plan: free
@@ -19,3 +19,5 @@ services:
     envVars:
       - key: REACT_APP_API_URL
         value: https://study-mate-backend.onrender.com
+      - key: REACT_APP_GOOGLE_CLIENT_ID
+        sync: false
