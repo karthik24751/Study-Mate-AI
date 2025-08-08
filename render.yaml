@@ -18,6 +18,6 @@ services:
     staticPublishPath: frontend/build
     envVars:
       - key: REACT_APP_API_URL
-        value: https://study-mate-backend.onrender.com
+        value: https://study-mate-backend-667013120125.us-central1.run.app
       - key: REACT_APP_GOOGLE_CLIENT_ID
         sync: false
