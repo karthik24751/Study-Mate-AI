@@ -577,7 +577,7 @@ body {
 
 /* Modern gradient backgrounds */
 .gradient-bg {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background: linear-gradient(135deg, #2196f3 0%, #00bcd4 50%, #64b5f6 100%);
 }
 
 .gradient-bg-secondary {
@@ -659,12 +659,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2196f3 0%, #00bcd4 100%);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  background: linear-gradient(135deg, #1976d2 0%, #0097a7 100%);
 }
 
 /* Responsive design improvements */
@@ -682,7 +682,7 @@ body {
 button:focus,
 input:focus,
 textarea:focus {
-  outline: 2px solid #667eea;
+  outline: 2px solid #2196f3;
   outline-offset: 2px;
 }
 
