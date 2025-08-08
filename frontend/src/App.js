@@ -192,9 +192,9 @@ function App() {
       fetchStudyPlan(studyPlan.user_id);
     }
     
-    // Fetch quiz questions when navigating to quiz page
-    if (newView === 'quiz' && studyPlan?.user_id) {
-      fetchQuizQuestions(studyPlan.user_id);
+    // Quiz questions are already loaded from study plan
+    if (newView === 'quiz') {
+      console.log('Current quiz questions:', quizQuestions);
     }
   };
 
@@ -210,24 +210,7 @@ function App() {
     }
   };
 
-  const fetchQuizQuestions = async (userId) => {
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/quiz`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: userId }),
-      });
 
-      const data = await response.json();
-      if (response.ok && data.questions) {
-        setQuizQuestions(data.questions);
-      }
-    } catch (error) {
-      console.error('Failed to fetch quiz questions:', error);
-    }
-  };
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -251,18 +234,40 @@ function App() {
       });
 
       const data = await response.json();
+      console.log('Upload response:', data); // Debug log
+      
       if (response.ok) {
         // Store the study plan and concept map from the response
         if (data.study_plan) {
+          console.log('Study plan received:', data.study_plan); // Debug log
           setStudyPlan(data.study_plan);
-        }
-        if (data.concept_map) {
-          // You can add concept map state if needed
-          console.log('Concept map generated:', data.concept_map);
+          
+          // Extract quiz questions from study plan sections
+          const allQuizQuestions = [];
+          if (data.study_plan.sections) {
+            data.study_plan.sections.forEach((section, sectionIndex) => {
+              if (section.quiz_questions && section.quiz_questions.length > 0) {
+                section.quiz_questions.forEach((q, qIndex) => {
+                  allQuizQuestions.push({
+                    ...q,
+                    section_id: section.id,
+                    section_title: section.title,
+                    question_index: qIndex
+                  });
+                });
+              }
+            });
+          }
+          
+          if (allQuizQuestions.length > 0) {
+            console.log('Quiz questions extracted:', allQuizQuestions); // Debug log
+            setQuizQuestions(allQuizQuestions);
+          }
         }
         
-        // Generate quiz questions for the uploaded content
-        await generateQuizQuestions(data.user_id);
+        if (data.concept_map) {
+          console.log('Concept map generated:', data.concept_map);
+        }
         
         showSnackbar('File uploaded successfully! Study plan and quiz generated.', 'success');
         setFile(null);
@@ -276,29 +281,10 @@ function App() {
         showSnackbar(data.error || 'Upload failed', 'error');
       }
     } catch (error) {
+      console.error('Upload error:', error); // Debug log
       showSnackbar('Upload failed: ' + error.message, 'error');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const generateQuizQuestions = async (userId) => {
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/quiz`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: userId }),
-      });
-
-      const data = await response.json();
-      if (response.ok && data.questions) {
-        setQuizQuestions(data.questions);
-        showSnackbar('Quiz questions generated!', 'success');
-      }
-    } catch (error) {
-      console.error('Failed to generate quiz questions:', error);
     }
   };
 
@@ -1127,28 +1113,69 @@ function App() {
                   <Typography variant="h6" gutterBottom>
                     Question {index + 1}: {q.question}
                   </Typography>
-                  {q.options && q.options.map((option, optIndex) => (
-                    <Button
-                      key={optIndex}
-                      variant={quizAnswers[index] === optIndex ? "contained" : "outlined"}
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Type: {q.type === 'fill_blank' ? 'Fill in the blank' : 'Multiple choice'}
+                  </Typography>
+                  {q.type === 'fill_blank' ? (
+                    <TextField
                       fullWidth
-                      sx={{ mb: 1, justifyContent: 'flex-start' }}
-                      onClick={() => setQuizAnswers({...quizAnswers, [index]: optIndex})}
-                    >
-                      {option}
-                    </Button>
-                  ))}
+                      variant="outlined"
+                      placeholder="Enter your answer..."
+                      value={quizAnswers[index] || ''}
+                      onChange={(e) => setQuizAnswers({...quizAnswers, [index]: e.target.value})}
+                      sx={{ mb: 2 }}
+                    />
+                  ) : (
+                    q.options && q.options.map((option, optIndex) => (
+                      <Button
+                        key={optIndex}
+                        variant={quizAnswers[index] === optIndex ? "contained" : "outlined"}
+                        fullWidth
+                        sx={{ mb: 1, justifyContent: 'flex-start' }}
+                        onClick={() => setQuizAnswers({...quizAnswers, [index]: optIndex})}
+                      >
+                        {option}
+                      </Button>
+                    ))
+                  )}
                 </Card>
               ))}
               <Box sx={{ mt: 3, textAlign: 'center' }}>
                 <Button
                   variant="contained"
                   size="large"
-                  onClick={() => {
-                    const score = Object.keys(quizAnswers).length;
-                    const total = quizQuestions.length;
-                    showSnackbar(`Quiz completed! You answered ${score} out of ${total} questions.`, 'success');
-                    setQuizResults({ score, total });
+                  onClick={async () => {
+                    // Prepare answers for backend
+                    const answers = Object.keys(quizAnswers).map(index => ({
+                      section_id: quizQuestions[index].section_id,
+                      question_index: quizQuestions[index].question_index,
+                      answer: quizAnswers[index]
+                    }));
+                    
+                    try {
+                      const response = await fetch(`${process.env.REACT_APP_API_URL}/quiz`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                          user_id: studyPlan?.user_id || 'default',
+                          answers: answers
+                        }),
+                      });
+                      
+                      const data = await response.json();
+                      if (response.ok) {
+                        const score = data.score;
+                        const total = quizQuestions.length;
+                        showSnackbar(`Quiz completed! Your score: ${Math.round(score)}%`, 'success');
+                        setQuizResults({ score, total });
+                      } else {
+                        showSnackbar('Failed to submit quiz: ' + data.error, 'error');
+                      }
+                    } catch (error) {
+                      showSnackbar('Failed to submit quiz: ' + error.message, 'error');
+                    }
                   }}
                   disabled={Object.keys(quizAnswers).length < quizQuestions.length}
                   startIcon={<CheckCircleIcon />}
@@ -1163,10 +1190,10 @@ function App() {
                     Quiz Results
                   </Typography>
                   <Typography variant="body1">
-                    You answered {quizResults.score} out of {quizResults.total} questions correctly!
+                    Quiz completed successfully!
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 1 }}>
-                    Score: {Math.round((quizResults.score / quizResults.total) * 100)}%
+                    Score: {Math.round(quizResults.score)}%
                   </Typography>
                 </Card>
               )}
