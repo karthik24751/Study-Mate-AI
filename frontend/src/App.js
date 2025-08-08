@@ -334,7 +334,17 @@ function App() {
       
       <Grid container spacing={3} sx={{ mt: 4 }}>
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card 
+            sx={{ 
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: 4
+              }
+            }}
+            onClick={() => setCurrentView('upload')}
+          >
             <CardContent>
               <UploadIcon sx={{ fontSize: 40, color: 'primary.main', mb: 2 }} />
               <Typography variant="h6" gutterBottom>
@@ -348,7 +358,17 @@ function App() {
         </Grid>
         
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card 
+            sx={{ 
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: 4
+              }
+            }}
+            onClick={() => setCurrentView('qa')}
+          >
             <CardContent>
               <QAIcon sx={{ fontSize: 40, color: 'primary.main', mb: 2 }} />
               <Typography variant="h6" gutterBottom>
@@ -362,7 +382,17 @@ function App() {
         </Grid>
         
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card 
+            sx={{ 
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: 4
+              }
+            }}
+            onClick={() => setCurrentView('study-plan')}
+          >
             <CardContent>
               <TimelineIcon sx={{ fontSize: 40, color: 'primary.main', mb: 2 }} />
               <Typography variant="h6" gutterBottom>
